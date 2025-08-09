@@ -8,6 +8,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    env:
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -18,20 +22,28 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # Instala o SDK e aceita licenças automaticamente
-      - name: Install Android SDK packages
-        uses: android-actions/setup-android@v3
-        with:
-          packages: |
-            platform-tools
-            platforms;android-34
-            build-tools;34.0.0
+      # Garante a versão recente do Command-line Tools (necessário para baixar platform-tools)
+      - name: Install latest Android command-line tools
+        run: |
+          set -eux
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+          curl -sSL -o /tmp/commandlinetools.zip \
+            https://dl.google.com/android/repository/commandlinetools-linux-12266719_latest.zip
+          unzip -q /tmp/commandlinetools.zip -d "$ANDROID_SDK_ROOT/cmdline-tools"
+          # O zip extrai para "cmdline-tools", movemos para a pasta "latest" que o sdkmanager espera
+          mv "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest"
 
-      - name: Build Debug APK
+      - name: Accept licenses and install Android packages
+        run: |
+          set -eux
+          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" --licenses
+          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" \
+            "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Build Debug APK (verbose)
         uses: gradle/gradle-build-action@v3
         with:
-          gradle-version: 8.6
-          arguments: assembleDebug --stacktrace --info --no-daemon
+          arguments: :app:assembleDebug --stacktrace --info --no-daemon
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
