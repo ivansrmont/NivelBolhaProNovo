@@ -19,14 +19,14 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Install Android SDK (action)
+      - name: Install Android SDK
         uses: android-actions/setup-android@v3
         with:
           api-level: 34
           build-tools: 34.0.0
           ndk: false
 
-      - name: Accept Android SDK licenses and install packages
+      - name: Accept SDK licenses & ensure packages
         env:
           ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
         run: |
@@ -34,12 +34,20 @@ jobs:
           yes | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" \
             "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: (debug) Mostrar estrutura
+        run: |
+          pwd
+          ls -la
+          find . -maxdepth 2 -name "settings.gradle*"
+
       - name: Build Debug APK (verbose)
         run: ./gradlew :app:assembleDebug --stacktrace --info --no-daemon
-        working-directory: NivelBolhaPro_AX
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
-          path: NivelBolhaPro_AX/app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
